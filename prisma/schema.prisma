@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Instruction {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  duration    Int
+  previewFile String // stores file path or URL
+  steps       Step[]
+  assets      InstructionAsset[]
+  createdBy   Int
+  updatedBy   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime? 
+  deletedBy   Int?
+}
+
+model Step {
+  id           Int       @id @default(autoincrement())
+  type         String    // (image, video, pdf, text)
+  title        String
+  description  String
+  stepNr       Int
+  attachedFile String?   // store file path or URL
+  instructionId Int
+  instruction  Instruction @relation(fields: [instructionId], references: [id])
+  createdBy    Int
+  updatedBy    Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+  deletedBy    Int?
+}
+
+model Asset {
+  id          Int       @id @default(autoincrement())
+  name        String
+  assetFiles  String[]  // array of file paths/URLs
+  instructions InstructionAsset[]
+  createdBy   Int
+  updatedBy   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+  deletedBy   Int?
+}
+
+model InstructionAsset {
+  instructionId Int
+  assetId       Int
+  instruction   Instruction @relation(fields: [instructionId], references: [id])
+  asset         Asset       @relation(fields: [assetId], references: [id])
+  @@id([instructionId, assetId])
+}
+
+model User {
+  id   Int    @id @default(autoincrement())
+  name String
+}
