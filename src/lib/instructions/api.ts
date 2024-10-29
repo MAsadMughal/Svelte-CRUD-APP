@@ -7,6 +7,13 @@ export async function fetchInstructions(): Promise<Instruction[]> {
     return await response.json();
 }
 
+export async function fetchSingleInstruction(id: number): Promise<Instruction> {
+    const response = await fetch(`/api/instructions/${id}`, {
+        method: 'GET',
+    });
+    return await response.json()
+}
+
 export async function createInstruction(data: Partial<Instruction>): Promise<Instruction> {
     const response = await fetch('/api/instructions', {
         method: 'POST',
@@ -25,12 +32,12 @@ export async function updateInstruction(id: number, data: Partial<Instruction>):
     return await response.json();
 }
 
-export async function deleteInstruction(id: number): Promise<boolean> {
+export async function deleteInstruction(id: number, user: number|undefined): Promise<boolean> {
     try {
         const response = await fetch('/api/instructions', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({id})
+            body: JSON.stringify({ id, user })
         });
 
         return response.ok;

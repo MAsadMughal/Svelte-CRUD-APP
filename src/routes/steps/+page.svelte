@@ -1,18 +1,25 @@
 <script lang="ts">
+	import { fetchUsers } from '$lib/users/api';
 	import { onMount } from 'svelte';
-	import { fetchSteps, createStep, deleteStep, updateStep } from '../../lib/steps/api';
 	import { fetchInstructions } from '../../lib/instructions/api';
-	import type { Step, Instruction } from '../../lib/types';
+	import {
+		createStep,
+		deleteStep,
+		fetchSteps,
+		fetchStepsByInstructionId,
+		updateStep
+	} from '../../lib/steps/api';
+	import type { Instruction, Step, User } from '../../lib/types';
 
-	let type = '';
+	let type: string = '';
 	let title = '';
 	let description = '';
-	let stepNr = 1;
+	let stepNr: number = 1;
 	let attachedFile = '';
-	let instructionId = 0;
-	let createdBy = 0;
-	let updatedBy = 0;
-
+	let instructionId: number | undefined = undefined;
+	let createdBy: number | undefined = undefined;
+	let updatedBy: number | undefined = undefined;
+	let users: User[] = [];
 	let steps: Step[] = [];
 	let instructions: Instruction[] = [];
 	let editStepId: number | null = null;
@@ -20,15 +27,45 @@
 	onMount(async () => {
 		steps = await fetchSteps();
 		instructions = await fetchInstructions();
+		users = await fetchUsers();
+		if (users.length > 0) {
+			console.log(createdBy);
+			if (createdBy === undefined || createdBy === null) createdBy = users[0].id;
+			if (updatedBy === undefined || updatedBy === null) updatedBy = users[0].id;
+		}
 	});
 
+	$: if ((instructionId, steps)) {
+		(async () => {
+			if (!editStepId) {
+				if (instructionId) {
+					stepNr = (await fetchStepsByInstructionId(instructionId)).length + 1;
+				} else {
+					stepNr = 1;
+				}
+			}
+		})();
+	}
+
 	const handleSave = async () => {
-		if (instructionId === 0) {
-			alert("Please select a valid instruction.");
+		if (instructionId === undefined) {
+			alert('Please select a valid Instruction.');
 			return;
 		}
 
-		const stepData = { type, title, description, stepNr, attachedFile, instructionId, createdBy, updatedBy };
+		if (editStepId === null) {
+			updatedBy = createdBy;
+		}
+		const stepData = {
+			type,
+			title,
+			description,
+			stepNr,
+			attachedFile,
+			instructionId,
+			createdBy,
+			updatedBy
+		};
 
 		if (editStepId === null) {
 			const newStep = await createStep(stepData);
@@ -55,7 +92,8 @@
 	};
 
 	const handleDelete = async (id: number) => {
-		const success = await deleteStep(id);
+		let user = editStepId ? updatedBy : createdBy;
+		const success = await deleteStep(id, user);
 		if (success) {
 			steps = steps.filter((step) => step.id !== id);
 
@@ -72,30 +110,67 @@
 		description = '';
 		stepNr = 1;
 		attachedFile = '';
-		instructionId = 0;
-		createdBy = 0;
-		updatedBy = 0;
+		instructionId = undefined;
+		createdBy = undefined;
+		updatedBy = undefined;
 	};
 </script>
 
 <h1>Steps</h1>
-
+{#if editStepId === null}
+	<div class="user-select">
+		<select id="createdBy" bind:value={createdBy} required>
+			{#each users as user}
+				<option value={user.id}>{user.name}</option>
+			{/each}
+		</select>
+	</div>
+{:else}
+	<div class="user-select">
+		<select id="updatedBy" bind:value={updatedBy} required>
+			{#each users as user}
+				<option value={user.id}>{user.name}</option>
+			{/each}
+		</select>
+	</div>
+{/if}
 <form on:submit|preventDefault={handleSave}>
-	<input bind:value={type} placeholder="Type" required />
-	<input bind:value={title} placeholder="Title" required />
-	<input bind:value={description} placeholder="Description" required />
-	<input type="number" bind:value={stepNr} placeholder="Step Number" required />
-	<input bind:value={attachedFile} placeholder="Attached File URL" />
+	<label for="type">Type</label>
+	<select id="type" bind:value={type} required>
+		<option value="" disabled>Select Type</option>
+		<option value="image">Image</option>
+		<option value="video">Video</option>
+		<option value="pdf">PDF</option>
+		<option value="text">Text</option>
+	</select>
 
-	<select bind:value={instructionId} required>
-		<option value="0">Select Instruction</option>
+	<label for="title">Title</label>
+	<input id="title" bind:value={title} placeholder="Title" required />
+
+	<label for="description">Description</label>
+	<input id="description" bind:value={description} placeholder="Description" required />
+
+	<label for="attachedFile">Attached File URL</label>
+	<input id="attachedFile" bind:value={attachedFile} placeholder="Attached File URL" />
+
+	<label for="instructionId">Select Instruction</label>
+	<select id="instructionId" bind:value={instructionId} required>
+		<option value={undefined} disabled>Select Instruction</option>
 		{#each instructions as instruction}
 			<option value={instruction.id}>{instruction.title}</option>
 		{/each}
 	</select>
 
-	<input type="number" bind:value={createdBy} placeholder="Created By" required />
-	<input type="number" bind:value={updatedBy} placeholder="Updated By" required />
+	<label for="stepNr">Step Number</label>
+	<input
+		id="stepNr"
+		type="number"
+		disabled
+		bind:value={stepNr}
+		placeholder="Step Number"
+		required
+	/>
+
 	<button type="submit">{editStepId === null ? 'Create Step' : 'Update Step'}</button>
 </form>
 
@@ -110,7 +185,6 @@
 </ul>
 
 <style>
-	/* General Layout */
 	h1 {
 		text-align: center;
 		font-size: 2rem;
@@ -118,13 +192,12 @@
 		margin-bottom: 1.5rem;
 	}
 
-	/* Form Styling */
 	form {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: 0.8rem;
-        margin: 0 auto;
+		margin: 0 auto;
 		margin-bottom: 50px;
 		width: 80%;
 		max-width: 500px;
@@ -134,6 +207,14 @@
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	}
 
+	label {
+		align-self: flex-start;
+		font-size: 1rem;
+		font-weight: bold;
+		margin-bottom: 0.2rem;
+		color: #333;
+	}
+
 	input,
 	select {
 		padding: 0.5rem;
@@ -141,9 +222,16 @@
 		border-radius: 4px;
 		width: 100%;
 		font-size: 1rem;
+		box-sizing: border-box;
 	}
-
-	button[type="submit"] {
+	.user-select {
+		margin-left: 80vw;
+		position: absolute;
+		top: 20px;
+		width: 200px;
+	}
+	button[type='submit'] {
+		align-self: flex-end;
 		background-color: #007bff;
 		color: white;
 		font-weight: bold;
@@ -154,11 +242,10 @@
 		transition: background-color 0.2s;
 	}
 
-	button[type="submit"]:hover {
+	button[type='submit']:hover {
 		background-color: #0056b3;
 	}
 
-	/* List Styling */
 	ul {
 		list-style: none;
 		padding: 0;
@@ -188,13 +275,11 @@
 		color: #333;
 	}
 
-	/* Edit Mode Styling */
 	.editing {
 		color: #d9534f;
 		font-weight: bold;
 	}
 
-	/* Button Styling */
 	button {
 		background-color: #007bff;
 		color: white;
@@ -203,7 +288,7 @@
 		border-radius: 4px;
 		cursor: pointer;
 		font-size: 0.9rem;
-        margin-right: 10px;
+		margin-right: 10px;
 		transition: background-color 0.2s;
 	}
 
@@ -211,7 +296,6 @@
 		background-color: #0056b3;
 	}
 
-	/* Delete Button */
 	button:last-child {
 		background-color: #d9534f;
 	}

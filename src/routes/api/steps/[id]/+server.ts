@@ -14,3 +14,14 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
     });
     return new Response(JSON.stringify(step), { status: 200 });
 };
+
+
+
+
+export const GET: RequestHandler = async ({ params, request }) => {
+    const id = parseInt(params.id);
+    const steps = await prisma.step.findMany({
+        where: { instructionId: id, deletedBy: null }
+    });
+    return new Response(JSON.stringify(steps), { status: 200 });
+};

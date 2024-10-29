@@ -6,7 +6,7 @@ import type { RequestHandler } from './$types';
 const prisma = new PrismaClient();
 
 export const GET: RequestHandler = async () => {
-    const steps = await prisma.instruction.findMany();
+    const steps = await prisma.instruction.findMany({ where: { deletedBy: null } });
     return new Response(JSON.stringify(steps), { status: 200 });
 };
 
@@ -18,8 +18,6 @@ export const POST: RequestHandler = async ({ request }) => {
 
 export const DELETE: RequestHandler = async ({ request }) => {
     const { id } = await request.json();
-    console.log(id)
-    await prisma.instruction.delete({ where: { id: Number(id) } });
+    await prisma.instruction.update({ where: { id: Number(id) }, data: { deletedAt: new Date(), deletedBy: 1 } });
     return new Response(null, { status: 204 });
-  };
-  
+};

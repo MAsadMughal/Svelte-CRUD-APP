@@ -6,6 +6,11 @@ export async function fetchSteps(): Promise<Step[]> {
     const response = await fetch('/api/steps');
     return await response.json();
 }
+export async function fetchStepsByInstructionId(id: number): Promise<Step[]> {
+    const response = await fetch(`/api/steps/${id}`);
+    return await response.json();
+}
+
 
 export async function createStep(data: Partial<Step>): Promise<Step> {
     const response = await fetch('/api/steps', {
@@ -26,12 +31,12 @@ export async function updateStep(id: number, data: Partial<Step>): Promise<Step>
 }
 
 
-export async function deleteStep(id: number): Promise<boolean> {
+export async function deleteStep(id: number, user: number|undefined): Promise<boolean> {
     try {
         const response = await fetch('/api/steps', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id })
+            body: JSON.stringify({ id, user })
         });
         return response.ok;
     } catch (error) {

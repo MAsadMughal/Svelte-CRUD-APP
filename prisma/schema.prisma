@@ -12,21 +12,23 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
-
 model Instruction {
   id          Int       @id @default(autoincrement())
   title       String
   description String
   duration    Int
-  previewFile String // stores file path or URL
+  previewFile String 
   steps       Step[]
   assets      InstructionAsset[]
-  createdBy   Int
-  updatedBy   Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime? 
-  deletedBy   Int?
+  createdBy   User      @relation("InstructionCreatedBy", fields: [createdById], references: [id])
+  createdById Int
+  updatedBy   User      @relation("InstructionUpdatedBy", fields: [updatedById], references: [id])
+  updatedById Int
+  deletedBy   User?     @relation("InstructionDeletedBy", fields: [deletedById], references: [id])
+  deletedById Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 }
 
 model Step {
@@ -36,27 +38,33 @@ model Step {
   description  String
   stepNr       Int
   attachedFile String?   // store file path or URL
-  instructionId Int
   instruction  Instruction @relation(fields: [instructionId], references: [id])
-  createdBy    Int
-  updatedBy    Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  instructionId Int
+  createdBy    User       @relation("StepCreatedBy", fields: [createdById], references: [id])
+  createdById  Int
+  updatedBy    User       @relation("StepUpdatedBy", fields: [updatedById], references: [id])
+  updatedById  Int
+  deletedBy    User?      @relation("StepDeletedBy", fields: [deletedById], references: [id])
+  deletedById  Int?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   deletedAt    DateTime?
-  deletedBy    Int?
 }
 
 model Asset {
   id          Int       @id @default(autoincrement())
   name        String
-  assetFiles  String[]  // array of file paths/URLs
+  assetFiles  String[]
   instructions InstructionAsset[]
-  createdBy   Int
-  updatedBy   Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdBy   User      @relation("AssetCreatedBy", fields: [createdById], references: [id])
+  createdById Int
+  updatedBy   User      @relation("AssetUpdatedBy", fields: [updatedById], references: [id])
+  updatedById Int
+  deletedBy   User?     @relation("AssetDeletedBy", fields: [deletedById], references: [id])
+  deletedById Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
-  deletedBy   Int?
 }
 
 model InstructionAsset {
@@ -68,6 +76,15 @@ model InstructionAsset {
 }
 
 model User {
-  id   Int    @id @default(autoincrement())
-  name String
+  id         Int        @id @default(autoincrement())
+  name       String
+  createdInstructions Instruction[] @relation("InstructionCreatedBy")
+  updatedInstructions Instruction[] @relation("InstructionUpdatedBy")
+  deletedInstructions Instruction[] @relation("InstructionDeletedBy")
+  createdSteps        Step[]        @relation("StepCreatedBy")
+  updatedSteps        Step[]        @relation("StepUpdatedBy")
+  deletedSteps        Step[]        @relation("StepDeletedBy")
+  createdAssets       Asset[]       @relation("AssetCreatedBy")
+  updatedAssets       Asset[]       @relation("AssetUpdatedBy")
+  deletedAssets       Asset[]       @relation("AssetDeletedBy")
 }

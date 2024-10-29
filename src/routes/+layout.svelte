@@ -1,8 +1,7 @@
 <!-- src/routes/_layout.svelte -->
 
-<script>
+<script lang="ts">
 	import { page } from '$app/stores';
-	import { get } from 'svelte/store';
 	export let title = 'Admin Panel';
 </script>
 
@@ -10,27 +9,27 @@
 
 <nav>
 	<ul>
-		<li><a href="/" class={get(page).url.pathname === '/' ? 'active' : ''}>Home</a></li>
+		<li><a href="/" class={$page.url.pathname === '/' ? 'active' : ''}>Home</a></li>
 		<li>
-			<a href="/instructions" class={get(page).url.pathname === '/instructions' ? 'active' : ''}>Manage Instructions</a>
+			<a href="/instructions" class={$page.url.pathname === '/instructions' ? 'active' : ''}>Manage Instructions</a>
 		</li>
 		<li>
-			<a href="/steps" class={get(page).url.pathname === '/steps' ? 'active' : ''}>Manage Steps</a>
+			<a href="/steps" class={$page.url.pathname === '/steps' ? 'active' : ''}>Manage Steps</a>
 		</li>
 		<li>
-			<a href="/assets" class={get(page).url.pathname === '/assets' ? 'active' : ''}
+			<a href="/assets" class={$page.url.pathname === '/assets' ? 'active' : ''}
 				>Manage Assets</a
 			>
 		</li>
 		<li>
 			<a
 				href="/instruction-assets"
-				class={get(page).url.pathname === '/instruction-assets' ? 'active' : ''}
+				class={$page.url.pathname === '/instruction-assets' ? 'active' : ''}
 				>Manage Instruction Assets</a
 			>
 		</li>
 		<li>
-			<a href="/users" class={get(page).url.pathname === '/users' ? 'active' : ''}>Manage Users</a>
+			<a href="/users" class={$page.url.pathname === '/users' ? 'active' : ''}>Manage Users</a>
 		</li>
 	</ul>
 </nav>
