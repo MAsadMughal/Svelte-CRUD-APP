@@ -73,3 +73,15 @@ ALTER TABLE "InstructionAsset" ADD CONSTRAINT "InstructionAsset_instructionId_fk
 
 -- AddForeignKey
 ALTER TABLE "InstructionAsset" ADD CONSTRAINT "InstructionAsset_assetId_fkey" FOREIGN KEY ("assetId") REFERENCES "Asset"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "Asset" ADD CONSTRAINT "userId_Create_asset_fkey" FOREIGN KEY ("createdAt") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Asset" ADD CONSTRAINT "userId_Update_asset_fkey" FOREIGN KEY ("updatedAt") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Asset" ADD CONSTRAINT "userId_Delete_asset_fkey" FOREIGN KEY ("deletedAt") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "Instruction" ADD CONSTRAINT "userId_Create_instruction_fkey" FOREIGN KEY ("createdAt") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Instruction" ADD CONSTRAINT "userId_Update_instruction_fkey" FOREIGN KEY ("updatedAt") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Instruction" ADD CONSTRAINT "userId_Delete_instruction_fkey" FOREIGN KEY ("deletedAt") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "Step" ADD CONSTRAINT "userId_Create_step_fkey" FOREIGN KEY ("createdAt") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Step" ADD CONSTRAINT "userId_Update_step_fkey" FOREIGN KEY ("updatedAt") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Step" ADD CONSTRAINT "userId_Delete_step_fkey" FOREIGN KEY ("deletedAt") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

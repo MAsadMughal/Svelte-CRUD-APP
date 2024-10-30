@@ -16,8 +16,6 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 };
 
 
-
-
 export const GET: RequestHandler = async ({ params, request }) => {
     const id = parseInt(params.id);
     const steps = await prisma.step.findMany({

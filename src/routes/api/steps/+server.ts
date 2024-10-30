@@ -16,9 +16,8 @@ export const POST: RequestHandler = async ({ request }) => {
     return new Response(JSON.stringify(step), { status: 201 });
 };
 
-// DELETE
 export const DELETE: RequestHandler = async ({ request }) => {
-    const { id } = await request.json();
-    await prisma.step.update({ where: { id: Number(id) }, data: { deletedAt: new Date(), deletedBy: 1 } })
+    const { id,user } = await request.json();
+    await prisma.step.update({ where: { id: Number(id) }, data: { deletedAt: new Date(), deletedBy: user } })
     return new Response(null, { status: 204 });
   };

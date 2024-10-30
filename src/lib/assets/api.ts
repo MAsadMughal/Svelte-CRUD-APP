@@ -32,9 +32,15 @@ export async function deleteAsset(id: number, user: number | undefined): Promise
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, user }),
         });
-        return response.ok;
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete asset');
+        }
+
+        return true;
     } catch (error) {
-        console.error('Failed to delete Asset:', error);
-        return false;
+        console.error('Failed to delete asset:', error);
+        throw new Error(error instanceof Error ? error.message : 'Unexpected error');
     }
 }

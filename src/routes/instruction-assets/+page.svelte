@@ -50,6 +50,13 @@
 		instructionId = undefined;
 		assetId = undefined;
 	};
+	let searchQuery="";
+$: filtered = instructionAssets.filter((asset) =>
+		asset.instructionId.toString().toLowerCase().includes(searchQuery.toLowerCase()) 
+		|| asset.assetId.toString().toLowerCase().includes(searchQuery.toLowerCase())
+		|| assets.find((a)=>a.id=== asset.assetId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
+		|| instructions.find((i)=>i.id=== asset.instructionId)?.title.toLowerCase().includes(searchQuery.toLowerCase())
+		);
 </script>
 <h1 style="text-align: center; margin-bottom: 20px;">Instruction Assets</h1>
 <form on:submit|preventDefault={handleSave}>
@@ -72,10 +79,17 @@
 	<button type="submit">Create Relationship</button>
 </form>
 
+<div class="search-container">
+	<input
+		type="text"
+		placeholder="Search instructions..."
+		bind:value={searchQuery}
+	/>
+</div>
 <ul>
-	{#each instructionAssets as instructionAsset}
+	{#each filtered as instructionAsset}
 		<li>
-			<p>Instruction ID: {instructionAsset.instructionId}, Asset ID: {instructionAsset.assetId}</p>
+			<p>Instruction: {instructions.find((i)=>i.id=== instructionAsset?.instructionId)?.title}, Asset: {assets.find((a)=>a.id=== instructionAsset?.assetId)?.name}</p>
 			<button
 				on:click={() => handleDelete(instructionAsset.instructionId, instructionAsset.assetId)}
 				>Delete</button
@@ -85,6 +99,18 @@
 </ul>
 
 <style>
+	.search-container {
+		display: flex;
+		justify-content: center;
+		margin-bottom: 1rem;
+	}
+	.search-container input {
+		padding: 0.5rem;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		width: 80%;
+		max-width: 500px;
+	}
 	form {
 		display: flex;
 		flex-direction: column;

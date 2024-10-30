@@ -31,8 +31,7 @@ export async function updateInstruction(id: number, data: Partial<Instruction>):
     });
     return await response.json();
 }
-
-export async function deleteInstruction(id: number, user: number|undefined): Promise<boolean> {
+export async function deleteInstruction(id: number, user: number | undefined): Promise<boolean> {
     try {
         const response = await fetch('/api/instructions', {
             method: 'DELETE',
@@ -40,9 +39,14 @@ export async function deleteInstruction(id: number, user: number|undefined): Pro
             body: JSON.stringify({ id, user })
         });
 
-        return response.ok;
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete instruction');
+        }
+
+        return true;
     } catch (error) {
         console.error('Failed to delete instruction:', error);
-        return false;
+        throw new Error(error instanceof Error ? error.message : 'Unexpected error');
     }
 }

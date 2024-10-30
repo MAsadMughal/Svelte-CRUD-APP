@@ -13,8 +13,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 // READ (All)
 export const GET: RequestHandler = async () => {
-  const posts = await prisma.user.findMany();
-  return new Response(JSON.stringify(posts));
+  const users = await prisma.user.findMany();
+  return new Response(JSON.stringify(users));
 };
 
 // UPDATE

@@ -16,8 +16,35 @@ export const POST: RequestHandler = async ({ request }) => {
     return new Response(JSON.stringify(instruction), { status: 201 });
 };
 
+
 export const DELETE: RequestHandler = async ({ request }) => {
-    const { id } = await request.json();
-    await prisma.instruction.update({ where: { id: Number(id) }, data: { deletedAt: new Date(), deletedBy: 1 } });
-    return new Response(null, { status: 204 });
+    try {
+        const { id, user } = await request.json();
+
+        const stepsWithInstruction = await prisma.step.findFirst({
+            where: { instructionId: Number(id), deletedBy: null }
+        });
+
+        const assetRelationships = await prisma.instructionAsset.findFirst({
+            where: { instructionId: Number(id) }
+        });
+
+        if (stepsWithInstruction || assetRelationships) {
+            return new Response(JSON.stringify({
+                error: "Cannot delete instruction that is referenced by steps or assets."
+            }), { status: 400 });
+        }
+
+        await prisma.instruction.update({
+            where: { id: Number(id) },
+            data: { deletedAt: new Date(), deletedBy: user }
+        });
+
+        return new Response(null, { status: 204 });
+    } catch (error) {
+        console.error('Error deleting instruction:', error);
+        return new Response(JSON.stringify({
+            error: "Server error while deleting instruction."
+        }), { status: 500 });
+    }
 };
