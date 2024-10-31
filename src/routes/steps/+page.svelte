@@ -11,7 +11,8 @@
 	} from '../../lib/steps/api';
 	import type { Instruction, Step, User } from '../../lib/types';
 	import { uploadFiles } from '$lib/uploadMultipleFiles';
-
+	import Modal from '$lib/components/modals/Modal.svelte';
+	
 	let type: string = 'text';
 	let title = '';
 	let description = '';
@@ -92,67 +93,39 @@
 		
 		if (editStepId === null) {
 
-			if(type != 'text' && files.length === 0){
-					alert('Please select a file to upload');
-					loading=false;
-					return;
-			}
-			console.log(1)
-			if (type === 'image' && !files[0].type.startsWith('image/')) {
-				alert('Please select an image file');
-				loading=false;
-				return;
-			}
-			console.log(2)
-			if (type === 'video' && !files[0].type.startsWith('video/')) {
-				alert('Please select a video file');
-				loading=false; 
-				return;
-			}
-			console.log(3)
-			if (type === 'pdf' && !files[0].type.startsWith('application/')) {
-				alert('Please select a pdf file');
-				loading=false;
-				return;
-			}
-			console.log(4)
 			if(type === 'text' && files[0]){
 				files=[];
 				stepData.attachedFile = "";
-				console.log(5)
-			}
-			else if(files[0]){
-					await handleUpload();
-					stepData.attachedFile = uploadResults[0].url;
+			}else if(type !== 'text'){
+				await handleUpload();
+				stepData.attachedFile = uploadResults[0].url;
 			}
 
 			const newStep = await createStep(stepData);
 			steps = [...steps, newStep];
 		} else {
-
 			//Edit Func
 			if(files.length > 0) {
-				if (type === 'image' && !files[0].type.startsWith('image/')) {
-					alert('Please select an image file');
-							loading=false;
-					return;
-				}
-				if (type === 'video' && !files[0].type.startsWith('video/')) {
-					alert('Please select a video file'); 
-							loading=false;
-					return;
-				}
-				if (type === 'pdf' && !files[0].type.startsWith('application/')) {
-					alert('Please select a pdf file');
-							loading=false;
-					return;
-				}	
+				// if (type === 'image' && !files[0].type.startsWith('image/')) {
+				// 	alert('Please select an image file');
+				// 			loading=false;
+				// 	return;
+				// }
+				// if (type === 'video' && !files[0].type.startsWith('video/')) {
+				// 	alert('Please select a video file'); 
+				// 			loading=false;
+				// 	return;
+				// }
+				// if (type === 'pdf' && !files[0].type.startsWith('application/')) {
+				// 	alert('Please select a pdf file');
+				// 			loading=false;
+				// 	return;
+				// }	
 				
 				if(type === 'text' && files[0]){
 					files=[];
 					stepData.attachedFile = "";
-				}
-				else{
+				}else{
 					await handleUpload();
 					stepData.attachedFile = uploadResults[0].url;
 				}
@@ -166,6 +139,8 @@
 		}
 
 		resetForm();
+
+		toggleModal();
 		loading=false;
 	};
 
@@ -184,6 +159,7 @@
 		createdBy = step.createdBy;
 		updatedBy = step.updatedBy;
 		files=[];
+		isModalOpen=true;
 	};
 
 	const handleDelete = async (id: number) => {
@@ -253,99 +229,392 @@
 			return;
 		}
 		uploadResults = await uploadFiles(files, 'images', '');
-			};
+	};
+
 	let searchQuery="";
-$: filteredSteps = steps.filter((step) =>
+	$: filteredSteps = steps.filter((step) =>
 		step.title.toLowerCase().includes(searchQuery.toLowerCase()) 
 		|| step.id.toString().includes(searchQuery.toLowerCase())
 		|| step.type.toLowerCase().includes(searchQuery.toLowerCase())
-		||step.description.toLowerCase().includes(searchQuery.toLowerCase()) 
+		|| step.description.toLowerCase().includes(searchQuery.toLowerCase())
+		|| instructions.find((i) => i.id === step.instructionId)?.title.toLowerCase().includes(searchQuery.toLowerCase())
 	);
+
+let isModalOpen = false;
+
+function toggleModal() {
+  isModalOpen = !isModalOpen;
+  if(isModalOpen===false){
+	resetForm();
+  }
+}
+
+
+let sortColumn = "";
+  let sortOrder = "asc";
+
+  function sortData(column) {
+    if (sortColumn === column) {
+      sortOrder = sortOrder === "asc" ? "desc" : "asc";
+    } else {
+      sortColumn = column;
+      sortOrder = "asc";
+    }
+
+    filteredSteps = [...filteredSteps].sort((a, b) => {
+      let aValue = a[sortColumn];
+      let bValue = b[sortColumn];
+
+      // Convert dates to numbers for sorting
+      if (sortColumn === "createdAt" || sortColumn === "updatedAt") {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      }
+
+      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+  }
+
+
 </script>
 
-<h1>Steps</h1>
-{#if editStepId === null}
-	<div class="user-select">
-		<select id="createdBy" bind:value={createdBy} required>
-			{#each users as user}
-				<option value={user.id}>{user.name}</option>
-			{/each}
-		</select>
-	</div>
-{:else}
-	<div class="user-select">
-		<select id="updatedBy" bind:value={updatedBy} required>
-			{#each users as user}
-				<option value={user.id}>{user.name}</option>
-			{/each}
-		</select>
-	</div>
+<div class="flex flex-col justify-start min-w-[50vw] max-w-[50vw] md:min-w-[70vw]  md:max-w-[70vw] lg:min-w-[75vw] lg:max-w-[75vw] xl:min-w-[80vw] xl:max-w-[80vw]  bg-white rounded-md shadow-md p-3 px-10 overflow-x-auto my-5">
+	<div class="flex flex-row justify-between items-center my-2">
+	<h1 class="text-2xl font-bold">List of Steps</h1>
+	<button on:click={toggleModal} class="px-5 py-3 text-sm bg-green-500 text-white rounded-lg">
+		Create New Step
+	</button>
+	</div>  
+	
+
+{#if isModalOpen}
+
+<Modal isOpen={isModalOpen} closeModal={toggleModal} title={editStepId?"Edit Instruction":"Add Instruction"}>
+	<form on:submit={handleSave} class="max-w-lg mx-auto p-6 bg-white dark:bg-gray-800 shadow-md rounded-lg space-y-4">
+	
+		<div class="flex flex-col">
+			<label for="title" class="text-gray-700 dark:text-gray-300 font-medium">Title</label>
+			<input 
+				id="title" 
+				bind:value={title} 
+				placeholder="Enter title" 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+			/>
+		</div>
+	
+		<div class="flex flex-col">
+			<label for="description" class="text-gray-700 dark:text-gray-300 font-medium">Description</label>
+			<input 
+				id="description" 
+				bind:value={description} 
+				placeholder="Enter description" 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+			/>
+		</div>
+		
+		<div class="flex flex-col">
+			<label for="type" class="text-gray-700 dark:text-gray-300 font-medium">Type</label>
+			<select 
+				id="type" 
+				bind:value={type} 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+			>
+				<option value="text">Text</option>
+				<option value="image">Image</option>
+				<option value="video">Video</option>
+				<option value="pdf">PDF</option>
+			</select>
+		</div>
+		{#if editStepId !== null && attachedFile}
+			<div class="flex flex-col ">
+				<label class="text-gray-700 dark:text-gray-300 font-medium">Current File</label>
+				{#if attachedFile.toLowerCase().endsWith('.jpg') || attachedFile.toLowerCase().endsWith('.jpeg') || attachedFile.toLowerCase().endsWith('.png') || attachedFile.toLowerCase().endsWith('.gif')}
+					<img src={attachedFile} alt="Current image" class="max-w-[200px] mt-2 rounded-lg" />
+				{:else if attachedFile.toLowerCase().endsWith('.mp4') || attachedFile.toLowerCase().endsWith('.webm') || attachedFile.toLowerCase().endsWith('.mov')}
+				<video src={attachedFile} class="max-w-[200px] mt-2 rounded-lg" preload="metadata" loop muted>
+					<track kind="metadata" />
+				</video>
+				{:else if attachedFile.toLowerCase().endsWith('.pdf')}
+					<div class="mt-2">
+						<a href={attachedFile} target="_blank" class="text-blue-500 hover:text-blue-700 underline">
+							View Current PDF
+						</a>
+					</div>
+				{/if}
+			</div>
+		{/if}
+		{#if type === 'image'}
+			<div class="flex flex-col">
+				<label for="imageFile" class="text-gray-700 dark:text-gray-300 font-medium">Image File</label>
+				<input 
+					id="attachedFile" 
+					type="file" 
+					accept="image/*" 
+					required={(editStepId===null && type==='image') || (editStepId!= null && type==='image' && !attachedFile?.toLowerCase().endsWith('.jpg') && !attachedFile?.toLowerCase().endsWith('.jpeg') && !attachedFile?.toLowerCase().endsWith('.png') && !attachedFile?.toLowerCase().endsWith('.gif'))}
+					on:change={handleFileChange} 
+					class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+					/>
+				</div>
+				{/if}
+				
+				{#if type === 'video'}
+				<div class="flex flex-col">
+					<label for="videoFile" class="text-gray-700 dark:text-gray-300 font-medium">Video File</label>
+					<input 
+					required={(editStepId===null && type==='video') || (editStepId!==null && type==='video' && !attachedFile?.toLowerCase().endsWith('.mp4') && !attachedFile?.toLowerCase().endsWith('.webm') && !attachedFile?.toLowerCase().endsWith('.mov'))}
+					id="attachedFile" 
+					type="file" 
+					accept="video/*" 
+					on:change={handleFileChange} 
+					class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+					/>
+				</div>
+				{/if}
+				
+				{#if type === 'pdf'}
+			<div class="flex flex-col">
+				<label for="pdfFile" class="text-gray-700 dark:text-gray-300 font-medium">PDF File</label>
+				<input 
+					required={(editStepId===null && type==='pdf') || (editStepId!==null && type==='pdf' && !attachedFile?.toLowerCase().endsWith('.pdf'))}
+					id="attachedFile" 
+					type="file" 
+					accept="application/pdf" 
+					on:change={handleFileChange} 
+					class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+				/>
+			</div>
+		{/if}
+		
+		{#if editStepId === null}
+		<div class="flex flex-col">
+			<label for="createdBy" class="text-gray-700 dark:text-gray-300 font-medium">Current User</label>
+			<select 
+				id="createdBy" 
+				bind:value={createdBy} 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+			>
+				{#each users as user}
+					<option value={user.id}>{user.name}</option>
+				{/each}
+			</select>
+		</div>
+	{:else}
+		<div class="flex flex-col">
+			<label for="updatedBy" class="text-gray-700 dark:text-gray-300 font-medium">Current User</label>
+			<select 
+				id="updatedBy" 
+				bind:value={updatedBy} 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+			>
+				{#each users as user}
+					<option value={user.id}>{user.name}</option>
+				{/each}
+			</select>
+		</div>
+	{/if}
+
+
+		<div class="flex flex-col">
+			<label for="instructionId" class="text-gray-700 dark:text-gray-300 font-medium">Select Instruction</label>
+			<select 
+				id="instructionId" 
+				bind:value={instructionId} 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+			>
+				<option value={undefined} disabled>Select Instruction</option>
+				{#each instructions as instruction}
+					<option value={instruction.id}>{instruction.title}</option>
+				{/each}
+			</select>
+		</div>
+	
+		<div class="flex flex-col">
+			<label for="stepNr" class="text-gray-700 dark:text-gray-300 font-medium">Step Number</label>
+			<input 
+				id="stepNr" 
+				type="number" 
+				disabled 
+				bind:value={stepNr} 
+				placeholder="Step Number" 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+			/>
+		</div>
+	
+		<button 
+			type="submit" 
+			disabled={loading} 
+			class="w-full px-4 py-2 font-semibold text-white bg-blue-500 rounded-md hover:bg-blue-600 transition focus:outline-none focus:ring focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+		>
+			{editStepId === null ? 'Create Step' : 'Update Step'}
+		</button>
+	</form>
+	</Modal>
 {/if}
-<form on:submit|preventDefault={handleSave}>
-	
-	<label for="title">Title</label>
-	<input id="title" bind:value={title} placeholder="Title" required />
-	
-	<label for="description">Description</label>
-	<input id="description" bind:value={description} placeholder="Description" required />
-	
-	<label for="type">Type</label>
-	<select id="type" bind:value={type} required>
-		<option value="text">Text</option>
-		<option value="image">Image</option>
-		<option value="video">Video</option>
-		<option value="pdf">PDF</option>
-	</select>
 
-	{#if type === 'image'}
-		<label for="imageFile">Image File</label>
-		<input
-			id="attachedFile"
-			type="file"
-			accept="image/*"
-			on:change={handleFileChange}
-		/>
-	{/if}
-	{#if type === 'video'}
-		<label for="videoFile">Video File</label>
-		<input
-			id="attachedFile" 
-			type="file"
-			accept="video/*"
-			on:change={handleFileChange}
-		/>
-	{/if}
-	{#if type === 'pdf'}
-		<label for="pdfFile">PDF File</label>
-		<input
-			id="attachedFile"
-			type="file" 
-			accept="application/pdf"
-			on:change={handleFileChange}
-		/>
-	{/if}
-	
-	<label for="instructionId">Select Instruction</label>
-	<select id="instructionId" bind:value={instructionId} required>
-		<option value={undefined} disabled>Select Instruction</option>
-		{#each instructions as instruction}
-			<option value={instruction.id}>{instruction.title}</option>
-		{/each}
-	</select>
 
-	<label for="stepNr">Step Number</label>
-	<input
-		id="stepNr"
-		type="number"
-		disabled
-		bind:value={stepNr}
-		placeholder="Step Number"
-		required
-	/>
 
-	<button type="submit" disabled={loading}>{editStepId === null ? 'Create Step' : 'Update Step'}</button>
-</form>
-<div class="search-container">
+
+<div class="p-4">
+	<div class="flex flex-row justify-start items-center">
+		<div class="relative -z-0 w-full max-w-xs mb-2 ">
+			<span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+				<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><rect width="24" height="24" fill="none"/><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5S14 7.01 14 9.5S11.99 14 9.5 14"/></svg>
+			</span>
+			<input
+			  type="text"
+			  bind:value={searchQuery}
+			  placeholder="Search..."
+			  class="pl-10 pr-4 py-2 w-full rounded-md bg-slate-50 text-black border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+			/>
+		</div>
+	</div>
+	  
+		
+		
+		
+		  <!-- Steps Table -->
+		<div class="overflow-x-auto bg-white rounded-lg 
+		 [&::-webkit-scrollbar]:h-0
+		">
+		<table class="min-w-full bg-white dark:bg-gray-800">
+			<thead class="border-b-2 border-b-indigo-800 select-none">
+			  <tr>
+				  <th
+				  class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+				  on:click={() => sortData("title")}
+				  >
+				  Title {sortColumn === "title" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+				</th>
+				<th
+				class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+				on:click={() => sortData("description")}
+				>
+				Description {sortColumn === "description" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+			</th>
+			<th
+			class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+			on:click={() => sortData("createdBy")}
+			>
+			Created By {sortColumn === "createdBy" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+		</th>
+		<th
+		class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+		on:click={() => sortData("updatedBy")}
+		>
+		Updated By {sortColumn === "updatedBy" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+	</th>
+	<th
+	class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+	on:click={() => sortData("createdAt")}
+	>
+	Created At {sortColumn === "createdAt" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+</th>
+<th
+class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+on:click={() => sortData("updatedAt")}
+>
+Updated At {sortColumn === "updatedAt" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+</th>
+<th
+class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+on:click={() => sortData("instructionId")}
+>
+Instruction {sortColumn === "instructionId" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+</th>
+<th
+class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+on:click={() => sortData("type")}
+>
+Type {sortColumn === "type" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+  File
+</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+	Actions
+</th>
+</tr>
+			</thead>
+			<tbody>
+			  {#each filteredSteps as step (step.id)}
+				<tr class="hover:bg-gray-100 odd:bg-gray-100 dark:hover:bg-gray-700">
+				  
+				  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">{step.title}</td>
+				  <td class="max-w-16 truncate px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">{step.description}</td>
+				  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					{users.find(user => user.id === step.createdBy)?.name}
+				  </td>
+				  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					{users.find(user => user.id === step.updatedBy)?.name}
+				  </td>
+				  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					{new Date(step.createdAt).toLocaleDateString()}
+				  </td>
+				  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					{new Date(step.updatedAt).toLocaleDateString()}
+				  </td>
+				  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					{instructions.find(instruction => instruction.id === step.instructionId)?.title}
+				  </td>
+				  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					{step.type}
+				  </td>
+				  
+				  <td class="px-6 py-4 whitespace-nowrap text-sm  font-semibold text-gray-800 dark:text-gray-200">
+					{#if step.type === 'video' && step.attachedFile}
+						<a href={step.attachedFile} target="_blank">
+							<video src={step.attachedFile} class="" preload="metadata" loop muted>
+								<track kind="metadata" />
+							</video>
+						</a>
+					{:else if step.type === 'pdf' && step.attachedFile}
+						<a href={step.attachedFile} target="_blank" class="text-blue-500 hover:text-blue-700">
+							PDF
+						</a>
+						{:else if step.type === 'image' && step.attachedFile}
+						<a href={step.attachedFile} target="_blank" class="text-blue-500 hover:text-blue-700">
+						<img src={step.attachedFile} alt="File" class=" " />
+						</a>
+						{:else}
+						-
+					{/if}
+				  </td>
+
+				  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					<button
+					  on:click={() => enableEdit(step)}
+					  class="px-3 py-1 mr-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+					>
+					  <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><rect width="24" height="24" fill="none"/><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>
+					</button>
+					<button
+					  on:click={() => handleDelete(step.id)}
+					  class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+					>
+					  <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><rect width="24" height="24" fill="none"/><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>
+					</button>
+				  </td>
+				</tr>
+			  {:else}
+				<tr>
+				  <td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-300">No Steps found</td>
+				</tr>
+			  {/each}
+			</tbody>
+		  </table>
+		</div>
+	</div>  
+</div>
+<!-- <div class="search-container">
 	<input 
 		type="text"
 		placeholder="Search instructions..."
@@ -387,137 +656,4 @@ $: filteredSteps = steps.filter((step) =>
 			<button on:click={() => handleDelete(step.id)}>Delete</button>
 		</li>
 	{/each}
-</ul>
-
-<style>
-	.search-container {
-		display: flex;
-		justify-content: center;
-		margin-bottom: 1rem;
-	}
-	.search-container input {
-		padding: 0.5rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		width: 80%;
-		max-width: 500px;
-	}
-	h1 {
-		text-align: center;
-		font-size: 2rem;
-		color: #333;
-		margin-bottom: 1.5rem;
-	}
-
-	form {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.8rem;
-		margin: 0 auto;
-		margin-bottom: 50px;
-		width: 80%;
-		max-width: 500px;
-		background-color: #f9f9f9;
-		padding: 1.5rem;
-		border-radius: 8px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	label {
-		align-self: flex-start;
-		font-size: 1rem;
-		font-weight: bold;
-		margin-bottom: 0.2rem;
-		color: #333;
-	}
-
-	input,
-	select {
-		padding: 0.5rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		width: 100%;
-		font-size: 1rem;
-		box-sizing: border-box;
-	}
-	.user-select {
-		margin-left: 80vw;
-		position: absolute;
-		top: 20px;
-		width: 200px;
-	}
-	button[type='submit'] {
-		align-self: flex-end;
-		background-color: #007bff;
-		color: white;
-		font-weight: bold;
-		border: none;
-		padding: 0.6rem 1.2rem;
-		border-radius: 4px;
-		cursor: pointer;
-		transition: background-color 0.2s;
-	}
-
-	button[type='submit']:hover {
-		background-color: #0056b3;
-	}
-
-	ul {
-		list-style: none;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		width: 80%;
-		margin: 0 auto;
-	}
-
-	li {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		width: 100%;
-		background-color: #f1f1f1;
-		padding: 1rem;
-		border-radius: 6px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-		margin-bottom: 1rem;
-	}
-
-	h2 {
-		margin: 0;
-		flex: 1;
-		font-size: 1.2rem;
-		color: #333;
-	}
-
-	.editing {
-		color: #d9534f;
-		font-weight: bold;
-	}
-
-	button {
-		background-color: #007bff;
-		color: white;
-		border: none;
-		padding: 0.4rem 0.8rem;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 0.9rem;
-		margin-right: 10px;
-		transition: background-color 0.2s;
-	}
-
-	button:hover {
-		background-color: #0056b3;
-	}
-
-	button:last-child {
-		background-color: #d9534f;
-	}
-
-	button:last-child:hover {
-		background-color: #c9302c;
-	}
-</style>
+</ul> -->

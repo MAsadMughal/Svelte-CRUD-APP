@@ -1,9 +1,8 @@
-<h1>Home Page</h1>
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 
-
-<style>
-	h1{
-		width: 100%;
-		text-align: center;
-	}
-</style>
+	onMount(() => {
+		goto('/instructions');
+	});
+</script>

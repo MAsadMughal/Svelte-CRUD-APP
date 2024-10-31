@@ -8,7 +8,7 @@
 	import { fetchInstructions } from '$lib/instructions/api';
 	import { fetchAssets } from '$lib/assets/api';
 	import type { Instruction, Asset, InstructionAsset } from '$lib/types';
-
+	import Modal from '$lib/components/modals/Modal.svelte';
 	let instructionId: number | undefined = undefined;
 	let assetId: number | undefined = undefined;
 	let instructionAssets: InstructionAsset[] = [];
@@ -30,7 +30,7 @@
 		const newInstructionAsset = await createInstructionAsset({ instructionId, assetId });
 
 		if (newInstructionAsset === false) {
-			alert('Already Exists a relationship between this Instruction and Asset.');
+			alert('Already exists a relationship between this Instruction and Asset.');
 		} else {
 			instructionAssets = [...instructionAssets, newInstructionAsset];
 			resetForm();
@@ -49,135 +49,193 @@
 	const resetForm = () => {
 		instructionId = undefined;
 		assetId = undefined;
+		isModalOpen=false;
 	};
-	let searchQuery="";
-$: filtered = instructionAssets.filter((asset) =>
+	let searchQuery = "";
+	$: filtered = instructionAssets.filter((asset) =>
 		asset.instructionId.toString().toLowerCase().includes(searchQuery.toLowerCase()) 
 		|| asset.assetId.toString().toLowerCase().includes(searchQuery.toLowerCase())
-		|| assets.find((a)=>a.id=== asset.assetId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
-		|| instructions.find((i)=>i.id=== asset.instructionId)?.title.toLowerCase().includes(searchQuery.toLowerCase())
-		);
+		|| assets.find((a) => a.id === asset.assetId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
+		|| instructions.find((i) => i.id === asset.instructionId)?.title.toLowerCase().includes(searchQuery.toLowerCase())
+	);
+
+
+	let isModalOpen = false;
+
+function toggleModal() {
+  isModalOpen = !isModalOpen;
+  if(isModalOpen===false){
+	resetForm();
+  }
+}
+
+
+let sortColumn = "";
+  let sortOrder = "asc";
+
+  function sortData(column) {
+    if (sortColumn === column) {
+      sortOrder = sortOrder === "asc" ? "desc" : "asc";
+    } else {
+      sortColumn = column;
+      sortOrder = "asc";
+    }
+
+    filtered = [...filtered].sort((a, b) => {
+      let aValue = a[sortColumn];
+      let bValue = b[sortColumn];
+
+      // Convert dates to numbers for sorting
+      if (sortColumn === "createdAt" || sortColumn === "updatedAt") {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      }
+
+      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+  }
+
+
+
+
+
 </script>
-<h1 style="text-align: center; margin-bottom: 20px;">Instruction Assets</h1>
-<form on:submit|preventDefault={handleSave}>
-	<label for="instructionId">Select Instruction</label>
-	<select id="instructionId" bind:value={instructionId} required>
-		<option value={undefined} disabled>Select Instruction</option>
-		{#each instructions as instruction}
-			<option value={instruction.id}>{instruction.title}</option>
-		{/each}
-	</select>
+<div class="flex flex-col justify-start min-w-[50vw] max-w-[50vw] md:min-w-[70vw]  md:max-w-[70vw] lg:min-w-[75vw] lg:max-w-[75vw] xl:min-w-[80vw] xl:max-w-[80vw]  bg-white rounded-md shadow-md p-3 px-10 overflow-x-auto my-5">
+	<div class="flex flex-row justify-between items-center my-2">
+	<h1 class="text-2xl font-bold">Instruction Assets</h1>
+	<button on:click={toggleModal} class="px-5 py-3 text-sm bg-green-500 text-white rounded-lg">
+		Create New Instruction Asset
+	</button>
+	</div>  
+	
 
-	<label for="assetId">Select Asset</label>
-	<select id="assetId" bind:value={assetId} required>
-		<option value={undefined} disabled>Select Asset</option>
-		{#each assets as asset}
-			<option value={asset.id}>{asset.name}</option>
-		{/each}
-	</select>
-
-	<button type="submit">Create Relationship</button>
-</form>
-
-<div class="search-container">
-	<input
-		type="text"
-		placeholder="Search instructions..."
-		bind:value={searchQuery}
-	/>
-</div>
-<ul>
-	{#each filtered as instructionAsset}
-		<li>
-			<p>Instruction: {instructions.find((i)=>i.id=== instructionAsset?.instructionId)?.title}, Asset: {assets.find((a)=>a.id=== instructionAsset?.assetId)?.name}</p>
-			<button
-				on:click={() => handleDelete(instructionAsset.instructionId, instructionAsset.assetId)}
-				>Delete</button
+{#if isModalOpen}
+<Modal isOpen={isModalOpen} closeModal={toggleModal} title={"Add Instruction Asset"}>
+	<form on:submit|preventDefault={handleSave} class="flex flex-col max-w-md mx-auto p-6 mb-5 bg-gray-50 rounded-lg shadow space-y-4">
+		<div class="flex flex-col">
+			<label for="instructionId" class="text-gray-700 font-medium">Select Instruction</label>
+			<select 
+				id="instructionId" 
+				bind:value={instructionId} 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
 			>
-		</li>
-	{/each}
-</ul>
+				<option value={undefined} disabled>Select Instruction</option>
+				{#each instructions as instruction}
+					<option value={instruction.id}>{instruction.title}</option>
+				{/each}
+			</select>
+		</div>
 
-<style>
-	.search-container {
-		display: flex;
-		justify-content: center;
-		margin-bottom: 1rem;
-	}
-	.search-container input {
-		padding: 0.5rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		width: 80%;
-		max-width: 500px;
-	}
-	form {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.8rem;
-		margin: 0 auto;
-		margin-bottom: 50px;
-		width: 80%;
-		max-width: 500px;
-		background-color: #f9f9f9;
-		padding: 1.5rem;
-		border-radius: 8px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-	}
+		<div class="flex flex-col">
+			<label for="assetId" class="text-gray-700 font-medium">Select Asset</label>
+			<select 
+				id="assetId" 
+				bind:value={assetId} 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+			>
+				<option value={undefined} disabled>Select Asset</option>
+				{#each assets as asset}
+					<option value={asset.id}>{asset.name}</option>
+				{/each}
+			</select>
+		</div>
 
-	label {
-		align-self: flex-start;
-		font-size: 1rem;
-		font-weight: bold;
-		margin-bottom: 0.2rem;
-		color: #333;
-	}
+		<button 
+			type="submit" 
+			class="w-full px-4 py-2 font-semibold text-white bg-blue-500 rounded-md hover:bg-blue-600 transition focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+		>
+			Create Relationship
+		</button>
+	</form>
+</Modal>
+{/if}
 
-	select {
-		padding: 0.5rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		width: 100%;
-		font-size: 1rem;
-		box-sizing: border-box;
-	}
+<div class="flex flex-row justify-start items-center">
+	<div class="relative -z-0 w-full max-w-xs mb-2 ">
+		<span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+			<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><rect width="24" height="24" fill="none"/><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5S14 7.01 14 9.5S11.99 14 9.5 14"/></svg>
+		</span>
+		<input
+		  type="text"
+		  bind:value={searchQuery}
+		  placeholder="Search..."
+		  class="pl-10 pr-4 py-2 w-full rounded-md bg-slate-50 text-black border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+		/>
+	</div>
+</div>
 
-	button[type='submit'] {
-		align-self: flex-end;
-		background-color: #007bff;
-		color: white;
-		font-weight: bold;
-		border: none;
-		padding: 0.6rem 1.2rem;
-		border-radius: 4px;
-		cursor: pointer;
-		transition: background-color 0.2s;
-	}
 
-	button[type='submit']:hover {
-		background-color: #0056b3;
-	}
+	<div class="overflow-x-auto bg-white rounded-lg 
+	 [&::-webkit-scrollbar]:h-0
+">
+<table class="min-w-full bg-white dark:bg-gray-800">
+	<thead class="border-b-2 border-b-indigo-800 select-none">
+		<tr>
+			<th
+				class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+				on:click={() => sortData("instructionId")}
+			>
+				Instruction ID {sortColumn === "instructionId" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+			</th>
+			<th
+				class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+				on:click={() => sortData("assetId")}
+			>
+				Asset ID {sortColumn === "assetId" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+			</th>
+			<th
+				class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+			>
+				Instruction name 
+			</th>
+			<th
+				class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+				
+			>
+				Asset name
+			</th>
+			<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+				Actions
+			</th>
+		</tr>
+	</thead>
+	<tbody>
+		{#each filtered as instructionAsset}
+			<tr class="hover:bg-gray-100 odd:bg-gray-100 dark:hover:bg-gray-700">
+				<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					{instructionAsset.instructionId}
+				</td>
+				<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					{instructionAsset.assetId}
+				</td>
+				<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					{instructions.find((a) => a.id === instructionAsset.instructionId)?.title}
+				</td>
+				<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					{assets.find((a) => a.id === instructionAsset.assetId)?.name}
+				</td>
+				<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+					<button
+						on:click={() => handleDelete(instructionAsset.instructionId, instructionAsset.assetId)}
+						class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><rect width="24" height="24" fill="none"/><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>
+					</button>
+				</td>
+			</tr>
+		{:else}
+			<tr>
+				<td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-gray-300">No Instruction Assets found</td>
+			</tr>
+		{/each}
+	</tbody>
+</table>
+</div>
 
-	ul {
-		list-style: none;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		width: 80%;
-		margin: 0 auto;
-	}
 
-	li {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		width: 100%;
-		background-color: #f1f1f1;
-		padding: 1rem;
-		border-radius: 6px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-		margin-bottom: 1rem;
-	}
-</style>
+
+</div>

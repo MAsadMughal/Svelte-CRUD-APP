@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Modal from '$lib/components/modals/Modal.svelte';
 	import { uploadFiles } from '$lib/uploadMultipleFiles';
 	import { fetchUsers } from '$lib/users/api';
 	import { onMount } from 'svelte';
@@ -27,12 +28,14 @@
 	const handleSave = async () => {
 		if (!createdBy) {
 			alert('Please select a creator.');
+			loading = false;
 			return;
 		}
 		loading = true;
 		if (editAssetId === null) {
 			if(files.length<=0){
 				alert('Please select a file to upload');
+				loading = false;
 				return;
 			}
 			
@@ -62,6 +65,7 @@
 			editAssetId = null;
 		}
 		loading = false;
+		isModalOpen=false;
 		const fileInput = document.getElementById('assetFiles') as HTMLInputElement;
 		if (fileInput) {
 			fileInput.value = '';
@@ -80,12 +84,32 @@
 		createdBy = asset.createdBy;
 		updatedBy = asset.updatedBy;
 		files=[];
+		isModalOpen=true;	
 	};
 
 	const handleFileChange = (event: Event) => {
 		const target = event.target as HTMLInputElement;
 		if (target.files) {
-			files = Array.from(target.files);
+			const selectedFiles = Array.from(target.files);
+			
+			// Check if any file is larger than 10MB
+			const MAX_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+			const oversizedFiles = selectedFiles.filter(file => file.size > MAX_SIZE);
+			
+			if (oversizedFiles.length > 0) {
+				alert('Files must be smaller than 10MB');
+				target.value = ''; // Clear the file input
+				return;
+			}
+
+			// Check if more than 10 files selected
+			if (selectedFiles.length > 10) {
+				alert('Maximum 10 files allowed');
+				target.value = ''; // Clear the file input
+				return;
+			}
+			
+			files = selectedFiles;
 		}
 	};
 
@@ -128,223 +152,301 @@
 		uploadResults = [];
 		loading = false;	
 	};
+
 	let searchQuery="";
-$: filteredAssets = assets.filter((asset) =>
+	$: filteredAssets = assets.filter((asset) =>
 		asset.name.toLowerCase().includes(searchQuery.toLowerCase()) 
 		|| asset.id.toString().includes(searchQuery.toLowerCase())
 		|| asset.assetFiles.some((file) => file.toLowerCase().includes(searchQuery.toLowerCase()))
 		);
+
+	let isModalOpen = false;
+
+function toggleModal() {
+  isModalOpen = !isModalOpen;
+  if(isModalOpen===false){
+	resetForm();
+  }
+}
+
+
+let sortColumn = "";
+  let sortOrder = "asc";
+
+  function sortData(column) {
+    if (sortColumn === column) {
+      sortOrder = sortOrder === "asc" ? "desc" : "asc";
+    } else {
+      sortColumn = column;
+      sortOrder = "asc";
+    }
+
+    filteredSteps = [...filteredSteps].sort((a, b) => {
+      let aValue = a[sortColumn];
+      let bValue = b[sortColumn];
+
+      // Convert dates to numbers for sorting
+      if (sortColumn === "createdAt" || sortColumn === "updatedAt") {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      }
+
+      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+  }
+
+
+let currFiles=[];
+let filesModal=false;
+$: {
+  console.log(currFiles);
+  console.log(filesModal); 
+}
+
 </script>
 
-{#if editAssetId === null}
-	<div class="user-select">
-		<select id="createdBy" bind:value={createdBy} required>
-			{#each users as user}
-				<option value={user.id}>{user.name}</option>
-			{/each}
-		</select>
+<div class="flex flex-col justify-start min-w-[50vw] max-w-[50vw] md:min-w-[70vw]  md:max-w-[70vw] lg:min-w-[75vw] lg:max-w-[75vw] xl:min-w-[80vw] xl:max-w-[80vw]  bg-white rounded-md shadow-md p-3 px-10 overflow-x-auto my-5">
+	<div class="flex flex-row justify-between items-center my-2">
+	<h1 class="text-2xl font-bold">List of Assets</h1>
+	<button on:click={toggleModal} class="px-5 py-3 text-sm bg-green-500 text-white rounded-lg">
+		Create New Asset
+	</button>
+	</div>  
+	
+
+{#if isModalOpen}
+
+<Modal isOpen={isModalOpen} closeModal={toggleModal} title={editAssetId?"Edit Asset":"Add Asset"}>
+<form on:submit|preventDefault={handleSave} class="flex flex-col max-w-md mx-auto p-6 mb-5 bg-gray-50 rounded-lg shadow space-y-4">
+	<div class="flex flex-col">
+		<label for="name" class="text-gray-700 font-medium">Asset Name</label>
+		<input 
+			id="name" 
+			bind:value={name} 
+			placeholder="Asset Name" 
+			required 
+			class="mt-1 px-4 py-2 border rounded-md bg-gray-100 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+		/>
 	</div>
-{:else}
-	<div class="user-select">
-		<select id="updatedBy" bind:value={updatedBy} required>
-			{#each users as user}
-				<option value={user.id}>{user.name}</option>
-			{/each}
-		</select>
+
+	<div class="flex flex-col">
+		<label for="assetFiles" class="text-gray-700 font-medium">Select Files</label>
+		<input
+			id="assetFiles"
+			type="file"
+			multiple
+			on:change={handleFileChange}
+			class="mt-1 px-4 py-2 border rounded-md bg-gray-100 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+		/>
 	</div>
+
+	{#if editAssetId === null}
+		<div class="flex flex-col">
+			<label for="createdBy" class="text-gray-700 dark:text-gray-300 font-medium">Current User</label>
+			<select 
+				id="createdBy" 
+				bind:value={createdBy} 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+			>
+				{#each users as user}
+					<option value={user.id}>{user.name}</option>
+				{/each}
+			</select>
+		</div>
+	{:else}
+		<div class="flex flex-col">
+			<label for="updatedBy" class="text-gray-700 dark:text-gray-300 font-medium">Current User</label>
+			<select 
+				id="updatedBy" 
+				bind:value={updatedBy} 
+				required 
+				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+			>
+				{#each users as user}
+					<option value={user.id}>{user.name}</option>
+				{/each}
+			</select>
+		</div>
+	{/if}
+
+	<button 
+		type="submit"
+		disabled={loading}
+		class="w-full px-4 py-2 font-semibold text-white bg-blue-500 rounded-md hover:bg-blue-600 transition focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+	>
+		{editAssetId === null ? 'Create Asset' : 'Update Asset'}
+	</button>
+</form>
+</Modal>
 {/if}
 
-<h1 style="text-align: center;">Assets</h1>
-<form on:submit|preventDefault={handleSave}>
-	<label for="name">Asset Name</label>
-	<input id="name" bind:value={name} placeholder="Asset Name" required />
-	<label for="assetFiles">Select Files:</label>
-	<input
-		id="assetFiles"
-		type="file"
-		multiple
-		on:change={handleFileChange}
-		disabled={editAssetId !== null}
-	/>
-	<button disabled={loading} type="submit">{editAssetId === null ? 'Create Asset' : 'Update Asset'}</button>
-</form>
-<div class="search-container">
-	<input 
-		type="text"
-		placeholder="Search instructions..."
-		bind:value={searchQuery}
-	/>
+<div class="flex flex-row justify-start items-center">
+	<div class="relative -z-0 w-full max-w-xs mb-2 ">
+		<span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+			<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><rect width="24" height="24" fill="none"/><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5S14 7.01 14 9.5S11.99 14 9.5 14"/></svg>
+		</span>
+		<input
+		  type="text"
+		  bind:value={searchQuery}
+		  placeholder="Search..."
+		  class="pl-10 pr-4 py-2 w-full rounded-md bg-slate-50 text-black border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+		/>
+	</div>
 </div>
-<ul>
-	{#each filteredAssets as asset}
-		<li>
-			<h2 class={editAssetId === asset.id ? 'editing' : ''}>{asset.name}</h2>
-			{#each asset.assetFiles as fileUrl}
-				{#if fileUrl.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/)}
-					<img
-						src={fileUrl}
-						height="50px"
-						width="50px"
-						style="margin-right: 30px;"
-						alt={asset.name}
-					/>
-				{:else if fileUrl.toLowerCase().match(/\.(mp4|webm|ogg|mov)$/)}
-					<a href={fileUrl} target="_blank" rel="noopener noreferrer">
-						<video
-							src={fileUrl}
-							height="50px"
-							width="50px"
-							style="margin-right: 30px;"
-							autoplay
-							muted
-							loop
-						/>
-					</a>
-				{:else if fileUrl.toLowerCase().match(/\.(mp3|wav|ogg|m4a)$/)}
-					<a href={fileUrl} target="_blank" rel="noopener noreferrer" style="margin-right: 30px;" title="Audio file">
-						<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><path fill="none" d="M204 0h48v48h-48z"/><path fill="#90caf9" d="M244 45h-32V3h22l10 10z"/><path fill="#e1f5fe" d="M242.5 14H233V4.5z"/><g fill="#1976d2"><circle cx="227" cy="30" r="4"/><path d="m234 21l-5-2v11h2v-7.1l3 1.1z"/></g><path fill="#90caf9" d="M40 45H8V3h22l10 10z"/><path fill="#e1f5fe" d="M38.5 14H29V4.5z"/><g fill="#1976d2"><circle cx="23" cy="30" r="4"/><path d="m30 21l-5-2v11h2v-7.1l3 1.1z"/></g></svg>
-					</a>
-				{:else if fileUrl.toLowerCase().match(/\.(xlsx|docx|pdf)$/)}
-					<a href={fileUrl} target="_blank" rel="noopener noreferrer" style="margin-right: 30px;" title="Document file">
-						<svg xmlns="http://www.w3.org/2000/svg" width="3em" height="3em" viewBox="0 0 32 32"><g fill="none"><path fill="url(#fluentColorDocument320)" d="M17 2H8a3 3 0 0 0-3 3v22a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3V12l-7-3z"/><path fill="url(#fluentColorDocument322)" fill-opacity="0.5" d="M17 2H8a3 3 0 0 0-3 3v22a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3V12l-7-3z"/><path fill="url(#fluentColorDocument321)" d="M17 10V2l10 10h-8a2 2 0 0 1-2-2"/><defs><linearGradient id="fluentColorDocument320" x1="20.4" x2="22.711" y1="2" y2="25.61" gradientUnits="userSpaceOnUse">
-							<stop stop-color="#6ce0ff"/><stop offset="1" stop-color="#4894fe"/></linearGradient><linearGradient id="fluentColorDocument321" x1="21.983" x2="19.483" y1="6.167" y2="10.333" gradientUnits="userSpaceOnUse"><stop stop-color="#9ff0f9"/><stop offset="1" stop-color="#b3e0ff"/></linearGradient><radialGradient id="fluentColorDocument322" cx="0" cy="0" r="1" gradientTransform="rotate(133.108 13.335 7.491)scale(17.438 10.2853)" gradientUnits="userSpaceOnUse"><stop offset=".362" stop-color="#4a43cb"/><stop offset="1" stop-color="#4a43cb" stop-opacity="0"/></radialGradient></defs></g></svg>
-					</a>
-				{:else}
-				<a href={fileUrl} target="_blank" rel="noopener noreferrer" style="margin-right: 30px;" title="Other file">
-					<svg xmlns="http://www.w3.org/2000/svg" width="3em" height="3em" viewBox="0 0 32 32"><g fill="none"><path fill="url(#fluentColorDocument320)" d="M17 2H8a3 3 0 0 0-3 3v22a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3V12l-7-3z"/><path fill="url(#fluentColorDocument322)" fill-opacity="0.5" d="M17 2H8a3 3 0 0 0-3 3v22a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3V12l-7-3z"/><path fill="url(#fluentColorDocument321)" d="M17 10V2l10 10h-8a2 2 0 0 1-2-2"/><defs><linearGradient id="fluentColorDocument320" x1="20.4" x2="22.711" y1="2" y2="25.61" gradientUnits="userSpaceOnUse"><stop stop-color="#6ce0ff"/><stop offset="1" stop-color="#4894fe"/></linearGradient><linearGradient id="fluentColorDocument321" x1="21.983" x2="19.483" y1="6.167" y2="10.333" gradientUnits="userSpaceOnUse"><stop stop-color="#9ff0f9"/><stop offset="1" stop-color="#b3e0ff"/></linearGradient><radialGradient id="fluentColorDocument322" cx="0" cy="0" r="1" gradientTransform="rotate(133.108 13.335 7.491)scale(17.438 10.2853)" gradientUnits="userSpaceOnUse"><stop offset=".362" stop-color="#4a43cb"/><stop offset="1" stop-color="#4a43cb" stop-opacity="0"/></radialGradient></defs></g></svg>
-				</a>
-				{/if}
+{#if currFiles.length > 0 && filesModal}
+<Modal isOpen={filesModal} closeModal={() => {
+    currFiles = [];
+    filesModal = false;
+}} title="Current Files">
+    <div class="p-4">
+        <ul class="space-y-2">
+            {#each currFiles as file}
+                <li class="flex items-center justify-between space-x-2 p-2 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                    <div class="flex items-center space-x-2">
+                        {#if file.toLowerCase().endsWith('.pdf')}
+                            <span class="px-2 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded">PDF</span>
+                            <iframe 
+                                src={file}
+                                title="PDF Document" 
+                                class="w-full h-96"
+                            ></iframe>
+                        {:else if file.toLowerCase().endsWith('.jpg') || file.toLowerCase().endsWith('.jpeg') || file.toLowerCase().endsWith('.png') || file.toLowerCase().endsWith('.gif')}
+                            <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded">Image</span>
+                            <img  
+                                src={file} 
+                                alt="file"
+                                class="max-w-[350px] h-auto" 
+                            />
+                        {:else if file.toLowerCase().endsWith('.mp4') || file.toLowerCase().endsWith('.webm')}
+                            <span class="px-2 py-1  text-xs font-semibold bg-purple-100 text-purple-800 rounded">Video</span>
+							<video 
+							src={file}
+							controls
+							class="max-w-[350px]"
+						>
+							<track kind="captions" srclang="en" label="English" />
+						</video>
+						
+                        {:else}
+                            <span class="px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800 rounded">File</span>
+                            <a 
+                                href={file} 
+                                target="_blank"
+                                rel="noopener noreferrer" 
+                                class="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 break-all"
+                            >
+                                {file.split('/').pop()}
+                            </a>
+                        {/if}
+                    </div>
+                </li>
+            {/each}
+        </ul>
+    </div>
+</Modal>
+{/if}
+
+<div class="overflow-x-auto bg-white rounded-lg 
+		 [&::-webkit-scrollbar]:h-0
+	">
+	<table class="min-w-full bg-white dark:bg-gray-800">
+		<thead class="border-b-2 border-b-indigo-800 select-none">
+			<tr>
+				<th
+					class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+					on:click={() => sortData("id")}
+				>
+					ID {sortColumn === "id" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+				</th>
+				<th
+					class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+					on:click={() => sortData("name")}
+				>
+					Name {sortColumn === "name" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+				</th>
+				<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+					Created By
+				</th>
+				<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+					Updated By
+				</th>
+				<th
+					class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+					on:click={() => sortData("createdAt")}
+				>
+					Created At {sortColumn === "createdAt" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+				</th>
+				<th
+					class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+					on:click={() => sortData("updatedAt")}
+				>
+					Updated At {sortColumn === "updatedAt" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+				</th>
+				<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+					Files
+				</th>
+				<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+					Actions
+				</th>
+			</tr>
+		</thead>
+		<tbody>
+			{#each filteredAssets as asset}
+				<tr class="hover:bg-gray-100 odd:bg-gray-100 dark:hover:bg-gray-700">
+					<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+						{asset.id}
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+						{asset.name}
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+						{users.find(user => user.id === asset.createdBy)?.name}
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+						{users.find(user => user.id === asset.updatedBy)?.name}
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+						{new Date(asset.createdAt).toLocaleDateString()}
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+						{new Date(asset.updatedAt).toLocaleDateString()}
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+						<button
+							on:click={() => {currFiles=asset.assetFiles;filesModal=true;}}
+							class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
+						>
+							Files
+						</button>
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+						<button
+							on:click={() => enableEdit(asset)}
+							class="px-3 py-1 mr-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+						>
+						<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><rect width="24" height="24" fill="none"/><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>
+
+						</button>
+						<button
+							on:click={() => handleDelete(asset.id)}
+							class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+						>
+						<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><rect width="24" height="24" fill="none"/><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>
+
+						</button>
+					</td>
+				</tr>
+			{:else}
+				<tr>
+					<td colspan="8" class="px-6 py-4 text-center text-gray-500 dark:text-gray-300">
+						No Assets found
+					</td>
+				</tr>
 			{/each}
-			<button on:click={() => enableEdit(asset)}>Edit</button>
-			<button on:click={() => handleDelete(asset.id)}>Delete</button>
-		</li>
-	{/each}
-</ul>
-
-<style>
-	/* Styling similar to the assets file */
-	.search-container {
-		display: flex;
-		justify-content: center;
-		margin-bottom: 1rem;
-	}
-	.search-container input {
-		padding: 0.5rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		width: 80%;
-		max-width: 500px;
-	}
-	form {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.8rem;
-		margin: 0 auto;
-		margin-bottom: 50px;
-		width: 80%;
-		max-width: 500px;
-		background-color: #f9f9f9;
-		padding: 1.5rem;
-		border-radius: 8px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-	}
-
-	label {
-		align-self: flex-start;
-		font-size: 1rem;
-		font-weight: bold;
-		margin-bottom: 0.2rem;
-		color: #333;
-	}
-
-	input,
-	select {
-		padding: 0.5rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		width: 100%;
-		font-size: 1rem;
-		box-sizing: border-box;
-	}
-	.user-select {
-		margin-left: 80vw;
-		position: absolute;
-		top: 20px;
-		width: 200px;
-	}
-
-	button[type='submit'] {
-		align-self: flex-end;
-		background-color: #007bff;
-		color: white;
-		font-weight: bold;
-		border: none;
-		padding: 0.6rem 1.2rem;
-		border-radius: 4px;
-		cursor: pointer;
-		transition: background-color 0.2s;
-	}
-
-	button[type='submit']:hover {
-		background-color: #0056b3;
-	}
-
-	ul {
-		list-style: none;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		width: 80%;
-		margin: 0 auto;
-	}
-
-	li {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		width: 100%;
-		background-color: #f1f1f1;
-		padding: 1rem;
-		border-radius: 6px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-		margin-bottom: 1rem;
-	}
-
-	h2 {
-		margin: 0;
-		flex: 1;
-		font-size: 1.2rem;
-		color: #333;
-	}
-
-	.editing {
-		color: #d9534f;
-		font-weight: bold;
-	}
-
-	button {
-		background-color: #007bff;
-		color: white;
-		border: none;
-		padding: 0.4rem 0.8rem;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 0.9rem;
-		margin-right: 10px;
-		transition: background-color 0.2s;
-	}
-
-	button:hover {
-		background-color: #0056b3;
-	}
-
-	button:last-child {
-		background-color: #d9534f;
-	}
-
-	button:last-child:hover {
-		background-color: #c9302c;
-	}
-</style>
+		</tbody>
+	</table>
+</div>
+</div>
