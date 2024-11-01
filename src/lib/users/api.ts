@@ -18,17 +18,30 @@ export async function createUser(user: string) {
     }
 }
 
-export async function deleteUser(id: number): Promise<boolean> {
+export async function deleteUser(id: number): Promise<true|string> {
     try {
         const response = await fetch('/api/users', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id })
         });
-        return response.ok;
+        if(response.ok){
+            return true;
+        }
+        const errorData = await response.json();
+        if (errorData.code === 'P2003') {
+            return 'Cannot delete user because they have associated records';
+        }
+        return errorData.message || 'Failed to delete user';
     } catch (error) {
         console.error('Failed to delete user:', error);
-        return false;
+        if(error instanceof Error) {
+            if (error.message.includes('foreign key constraint')) {
+                return 'Cannot delete user because they have associated records';
+            }
+            return error.message;
+        }
+        return 'An unexpected error occurred';
     }
 }
 

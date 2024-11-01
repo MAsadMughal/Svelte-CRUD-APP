@@ -139,8 +139,6 @@
 		}
 
 		resetForm();
-
-		toggleModal();
 		loading=false;
 	};
 
@@ -186,7 +184,9 @@
 		updatedBy = users[0].id;
 		files = [];
 		uploadResults = [];
+		editStepId=null;
 		loading = false;	
+		isModalOpen=false;
 	};
 
 	const handleFileChange = (event: Event) => {
@@ -243,10 +243,13 @@
 let isModalOpen = false;
 
 function toggleModal() {
-  isModalOpen = !isModalOpen;
-  if(isModalOpen===false){
-	resetForm();
-  }
+	if(loading){
+		return;
+	}
+	isModalOpen = !isModalOpen;
+	if(isModalOpen===false){
+		resetForm();
+	}
 }
 
 
@@ -290,9 +293,8 @@ let sortColumn = "";
 	
 
 {#if isModalOpen}
-
-<Modal isOpen={isModalOpen} closeModal={toggleModal} title={editStepId?"Edit Instruction":"Add Instruction"}>
-	<form on:submit={handleSave} class="max-w-lg mx-auto p-6 bg-white dark:bg-gray-800 shadow-md rounded-lg space-y-4">
+<Modal isOpen={isModalOpen} closeModal={toggleModal} title={editStepId?"Edit Step":"Add Step"}>
+	<form on:submit={handleSave} class="max-w-lg mx-auto px-6 pb-6 bg-white dark:bg-gray-800 shadow-md rounded-lg space-y-4">
 	
 		<div class="flex flex-col">
 			<label for="title" class="text-gray-700 dark:text-gray-300 font-medium">Title</label>
@@ -330,24 +332,7 @@ let sortColumn = "";
 				<option value="pdf">PDF</option>
 			</select>
 		</div>
-		{#if editStepId !== null && attachedFile}
-			<div class="flex flex-col ">
-				<label class="text-gray-700 dark:text-gray-300 font-medium">Current File</label>
-				{#if attachedFile.toLowerCase().endsWith('.jpg') || attachedFile.toLowerCase().endsWith('.jpeg') || attachedFile.toLowerCase().endsWith('.png') || attachedFile.toLowerCase().endsWith('.gif')}
-					<img src={attachedFile} alt="Current image" class="max-w-[200px] mt-2 rounded-lg" />
-				{:else if attachedFile.toLowerCase().endsWith('.mp4') || attachedFile.toLowerCase().endsWith('.webm') || attachedFile.toLowerCase().endsWith('.mov')}
-				<video src={attachedFile} class="max-w-[200px] mt-2 rounded-lg" preload="metadata" loop muted>
-					<track kind="metadata" />
-				</video>
-				{:else if attachedFile.toLowerCase().endsWith('.pdf')}
-					<div class="mt-2">
-						<a href={attachedFile} target="_blank" class="text-blue-500 hover:text-blue-700 underline">
-							View Current PDF
-						</a>
-					</div>
-				{/if}
-			</div>
-		{/if}
+	
 		{#if type === 'image'}
 			<div class="flex flex-col">
 				<label for="imageFile" class="text-gray-700 dark:text-gray-300 font-medium">Image File</label>
@@ -389,7 +374,29 @@ let sortColumn = "";
 				/>
 			</div>
 		{/if}
-		
+		{#if editStepId !== null && attachedFile}
+		<div class="flex flex-col items-center">
+			<label for="img" class="text-gray-700 dark:text-gray-300 font-medium">Attached File</label>
+			{#if attachedFile.toLowerCase().endsWith('.jpg') || attachedFile.toLowerCase().endsWith('.jpeg') || attachedFile.toLowerCase().endsWith('.png') || attachedFile.toLowerCase().endsWith('.gif')}
+				<div class="text-sm text-gray-500 mb-1">Image File (.jpg/.jpeg/.png/.gif)</div>
+				<img src={attachedFile} alt="Current" class="max-w-xs mt-2 rounded-lg" />
+			{:else if attachedFile.toLowerCase().endsWith('.mp4') || attachedFile.toLowerCase().endsWith('.webm') || attachedFile.toLowerCase().endsWith('.mov')}
+				<div class="text-sm text-gray-500 mb-1">Video File (.mp4/.webm/.mov)</div>
+				<a href={attachedFile} target="_blank">
+					<video src={attachedFile} class="max-w-xs mt-2 rounded-lg" preload="metadata" muted>
+					<track kind="metadata" />
+				</video>
+				</a>
+			{:else if attachedFile.toLowerCase().endsWith('.pdf')}
+				<div class="text-sm text-gray-500 mb-1">PDF File (.pdf)</div>
+				<div class="mt-2">
+					<a href={attachedFile} target="_blank" class="text-blue-500 hover:text-blue-700 underline">
+						View Current PDF
+					</a>
+				</div>
+			{/if}
+		</div>
+	{/if}
 		{#if editStepId === null}
 		<div class="flex flex-col">
 			<label for="createdBy" class="text-gray-700 dark:text-gray-300 font-medium">Current User</label>
@@ -463,7 +470,7 @@ let sortColumn = "";
 
 
 
-<div class="p-4">
+<div>
 	<div class="flex flex-row justify-start items-center">
 		<div class="relative -z-0 w-full max-w-xs mb-2 ">
 			<span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">

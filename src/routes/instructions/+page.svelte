@@ -17,8 +17,11 @@
 let isModalOpen = false;
 
 function toggleModal() {
-  isModalOpen = !isModalOpen;
-  if(isModalOpen===false){
+	if(loading){	
+		return;
+	}
+	isModalOpen = !isModalOpen;
+	if(isModalOpen===false){
 resetForm();
   }
 }
@@ -41,7 +44,6 @@ resetForm();
 		instructions = await fetchInstructions();
 		users = await fetchUsers();
 		if (users.length > 0) {
-			console.log(createdBy);
 			if (createdBy === undefined || createdBy === null) createdBy = users[0].id;
 			if (updatedBy === undefined || updatedBy === null) updatedBy = users[0].id;
 		}
@@ -141,6 +143,8 @@ resetForm();
 		files = [];
 		uploadResults = [];
 		loading = false;	
+		editInstructionId=null;
+		isModalOpen=false;
 	};
 
 	const handleFileChange = (event: Event) => {
@@ -185,7 +189,7 @@ $: filteredInstructions = instructions.filter((instruction) =>
 	let sortColumn = "";
   let sortOrder = "asc";
 
-  function sortData(column) {
+  function sortData(column: string) {
     if (sortColumn === column) {
       sortOrder = sortOrder === "asc" ? "desc" : "asc";
     } else {
@@ -194,13 +198,13 @@ $: filteredInstructions = instructions.filter((instruction) =>
     }
 
     filteredInstructions = [...filteredInstructions].sort((a, b) => {
-      let aValue = a[sortColumn];
-      let bValue = b[sortColumn];
+      let aValue = String(a[sortColumn as keyof typeof a] || '').toLowerCase();
+      let bValue = String(b[sortColumn as keyof typeof b] || '').toLowerCase();
 
       // Convert dates to numbers for sorting
       if (sortColumn === "createdAt" || sortColumn === "updatedAt") {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
+        aValue = String(new Date(a[sortColumn as keyof typeof a]).getTime());
+        bValue = String(new Date(b[sortColumn as keyof typeof b]).getTime());
       }
 
       if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
@@ -221,7 +225,7 @@ $: filteredInstructions = instructions.filter((instruction) =>
   
 {#if isModalOpen}
 <Modal isOpen={isModalOpen} closeModal={toggleModal} title={editInstructionId?"Edit Instruction":"Add Instruction"}>
-	<form on:submit|preventDefault={handleSave} class="max-w-lg mx-auto p-6 bg-white dark:bg-gray-800 shadow-md rounded-lg space-y-4">
+	<form on:submit|preventDefault={handleSave} class="max-w-lg mx-auto px-6 pb-6 bg-white dark:bg-gray-800 shadow-md rounded-lg space-y-4">
 		
 		<div class="flex flex-col">
 			<label for="title" class="text-gray-700 dark:text-gray-300 font-medium">Title</label>
@@ -288,17 +292,19 @@ $: filteredInstructions = instructions.filter((instruction) =>
 		</div>
 	
 		<div class="flex flex-col">
-			<label for="previewFile" class="text-gray-700 dark:text-gray-300 font-medium">Preview File</label>
-			{#if editInstructionId && previewFile}
-				<img src={previewFile} alt="Current preview" class="w-32 h-32 object-cover mb-2 rounded"/>
-			{/if}
 			<input 
-				id="previewFile" 
-				type="file" 
-				accept="image/*" 
-				on:change={handleFileChange} 
-				class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
+			id="previewFile" 
+			type="file" 
+			accept="image/*" 
+			on:change={handleFileChange} 
+			class="mt-1 px-4 py-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring focus:ring-blue-200"
 			/>
+			{#if editInstructionId && previewFile}
+			<div class="flex flex-col items-center">
+			<label for="previewFile" class="text-gray-700 dark:text-gray-300 font-medium">Preview File</label>
+				<img src={previewFile} alt="Current preview" class="max-w-sm mb-2 rounded"/>
+			</div>
+			{/if}
 		</div>
 		<button 
 			type="submit" 
@@ -313,7 +319,7 @@ $: filteredInstructions = instructions.filter((instruction) =>
 {/if}
 
 
-<div class="p-4">
+<div>
 <div class="flex flex-row justify-start items-center">
 	<div class="relative -z-0 w-full max-w-xs mb-2 ">
 		<span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -338,46 +344,46 @@ $: filteredInstructions = instructions.filter((instruction) =>
 	<table class="min-w-full bg-white dark:bg-gray-800">
 		<thead class="border-b-2 border-b-indigo-800 select-none">
 		  <tr>
-			<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
-			  Preview
-			</th>
-			<th
+			  <th
 			  class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
 			  on:click={() => sortData("title")}
-			>
+			  >
 			  Title {sortColumn === "title" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
 			</th>
 			<th
 			  class="px-6  py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
 			  on:click={() => sortData("description")}
 			>
-			  Description {sortColumn === "description" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
-			</th>
+			Description {sortColumn === "description" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+		</th>
 			<th
 			  class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
 			  on:click={() => sortData("createdBy")}
-			>
+			  >
 			  Created By {sortColumn === "createdBy" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
 			</th>
 			<th
-			  class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+			class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
 			  on:click={() => sortData("updatedBy")}
 			>
-			  Updated By {sortColumn === "updatedBy" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
-			</th>
-			<th
-			  class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
-			  on:click={() => sortData("createdAt")}
-			>
-			  Created At {sortColumn === "createdAt" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
-			</th>
-			<th
-			  class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
-			  on:click={() => sortData("updatedAt")}
-			>
-			  Updated At {sortColumn === "updatedAt" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
-			</th>
-			<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+			Updated By {sortColumn === "updatedBy" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+		</th>
+		<th
+		class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+		on:click={() => sortData("createdAt")}
+		>
+		Created At {sortColumn === "createdAt" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+	</th>
+	<th
+	class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider cursor-pointer"
+	on:click={() => sortData("updatedAt")}
+	>
+	Updated At {sortColumn === "updatedAt" ? (sortOrder === "asc" ? "▲" : "▼") : ""}
+</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+  Preview
+</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider w-0">
 			  Actions
 			</th>
 		  </tr>
@@ -385,12 +391,8 @@ $: filteredInstructions = instructions.filter((instruction) =>
 		<tbody>
 		  {#each filteredInstructions as instruction (instruction.id)}
 			<tr class="hover:bg-gray-100 odd:bg-gray-100 dark:hover:bg-gray-700">
-			  <td class="px-6 py-2 whitespace-nowrap text-sm text-gray-800 dark:text-gray-200">
-				<a href={instruction.previewFile} target="_blank">
-				  <img src={instruction.previewFile} alt="Preview" class="w-10 h-10 object-cover rounded-md" />
-				</a>
-			  </td>
-			  <td class="px-6 py-4 max-w-16 truncate whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">{instruction.title}</td>
+			 
+			  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">{instruction.title}</td>
 			  <td class="max-w-16 truncate px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">{instruction.description}</td>
 			  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
 				{users.find(user => user.id === instruction.createdBy)?.name}
@@ -403,6 +405,11 @@ $: filteredInstructions = instructions.filter((instruction) =>
 			  </td>
 			  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
 				{new Date(instruction.updatedAt).toLocaleDateString()}
+			  </td>
+			  <td class="px-6 py-2 whitespace-nowrap text-sm text-gray-800 dark:text-gray-200">
+				<a href={instruction.previewFile} target="_blank">
+				  <img src={instruction.previewFile} alt="Preview" class="w-10 h-10 object-contain rounded-md" />
+				</a>
 			  </td>
 			  <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
 				<button

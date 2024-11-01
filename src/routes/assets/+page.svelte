@@ -150,7 +150,9 @@
 		updatedBy = users[0].id;
 		files = [];
 		uploadResults = [];
-		loading = false;	
+		loading = false;
+		editAssetId=null;	
+		isModalOpen=false;
 	};
 
 	let searchQuery="";
@@ -163,10 +165,13 @@
 	let isModalOpen = false;
 
 function toggleModal() {
-  isModalOpen = !isModalOpen;
-  if(isModalOpen===false){
-	resetForm();
-  }
+	if(loading){	
+		return;
+	}
+	isModalOpen = !isModalOpen;
+	if(isModalOpen===false){
+		resetForm();
+	}
 }
 
 
@@ -181,14 +186,14 @@ let sortColumn = "";
       sortOrder = "asc";
     }
 
-    filteredSteps = [...filteredSteps].sort((a, b) => {
-      let aValue = a[sortColumn];
-      let bValue = b[sortColumn];
+    filteredAssets = [...filteredAssets].sort((a, b) => {
+      let aValue = String(a[sortColumn]).toLowerCase();
+      let bValue = String(b[sortColumn]).toLowerCase();
 
       // Convert dates to numbers for sorting
       if (sortColumn === "createdAt" || sortColumn === "updatedAt") {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
+        aValue = new Date(a[sortColumn]).getTime();
+        bValue = new Date(b[sortColumn]).getTime();
       }
 
       if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
@@ -198,14 +203,11 @@ let sortColumn = "";
   }
 
 
-let currFiles=[];
+let currFiles:any[]=[];
 let filesModal=false;
-$: {
-  console.log(currFiles);
-  console.log(filesModal); 
-}
 
 </script>
+
 
 <div class="flex flex-col justify-start min-w-[50vw] max-w-[50vw] md:min-w-[70vw]  md:max-w-[70vw] lg:min-w-[75vw] lg:max-w-[75vw] xl:min-w-[80vw] xl:max-w-[80vw]  bg-white rounded-md shadow-md p-3 px-10 overflow-x-auto my-5">
 	<div class="flex flex-row justify-between items-center my-2">
@@ -219,7 +221,7 @@ $: {
 {#if isModalOpen}
 
 <Modal isOpen={isModalOpen} closeModal={toggleModal} title={editAssetId?"Edit Asset":"Add Asset"}>
-<form on:submit|preventDefault={handleSave} class="flex flex-col max-w-md mx-auto p-6 mb-5 bg-gray-50 rounded-lg shadow space-y-4">
+<form on:submit|preventDefault={handleSave} class="flex flex-col px-6 mx-auto mb-5 rounded-lg space-y-4">
 	<div class="flex flex-col">
 		<label for="name" class="text-gray-700 font-medium">Asset Name</label>
 		<input 
@@ -388,7 +390,7 @@ $: {
 				<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
 					Files
 				</th>
-				<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+				<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider w-0">
 					Actions
 				</th>
 			</tr>

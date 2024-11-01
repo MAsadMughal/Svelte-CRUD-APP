@@ -63,10 +63,10 @@
 	let isModalOpen = false;
 
 function toggleModal() {
-  isModalOpen = !isModalOpen;
-  if(isModalOpen===false){
-	resetForm();
-  }
+	isModalOpen = !isModalOpen;
+	if(isModalOpen===false){
+		resetForm();
+	}
 }
 
 
@@ -82,13 +82,13 @@ let sortColumn = "";
     }
 
     filtered = [...filtered].sort((a, b) => {
-      let aValue = a[sortColumn];
-      let bValue = b[sortColumn];
+      let aValue = String(a[sortColumn]).toLowerCase();
+      let bValue = String(b[sortColumn]).toLowerCase();
 
       // Convert dates to numbers for sorting
       if (sortColumn === "createdAt" || sortColumn === "updatedAt") {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
+        aValue = new Date(a[sortColumn]).getTime();
+        bValue = new Date(b[sortColumn]).getTime();
       }
 
       if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
@@ -113,7 +113,7 @@ let sortColumn = "";
 
 {#if isModalOpen}
 <Modal isOpen={isModalOpen} closeModal={toggleModal} title={"Add Instruction Asset"}>
-	<form on:submit|preventDefault={handleSave} class="flex flex-col max-w-md mx-auto p-6 mb-5 bg-gray-50 rounded-lg shadow space-y-4">
+	<form on:submit|preventDefault={handleSave} class="flex flex-col max-w-md mx-auto rounded-lg pb-6 space-y-4">
 		<div class="flex flex-col">
 			<label for="instructionId" class="text-gray-700 font-medium">Select Instruction</label>
 			<select 
@@ -198,7 +198,7 @@ let sortColumn = "";
 			>
 				Asset name
 			</th>
-			<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider">
+			<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-300 uppercase text-nowrap tracking-wider w-0">
 				Actions
 			</th>
 		</tr>
@@ -218,7 +218,7 @@ let sortColumn = "";
 				<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
 					{assets.find((a) => a.id === instructionAsset.assetId)?.name}
 				</td>
-				<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">
+				<td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-center text-gray-800 dark:text-gray-200">
 					<button
 						on:click={() => handleDelete(instructionAsset.instructionId, instructionAsset.assetId)}
 						class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"

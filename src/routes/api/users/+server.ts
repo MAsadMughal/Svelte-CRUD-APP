@@ -30,6 +30,6 @@ export const PATCH: RequestHandler = async ({ request }) => {
 // DELETE
 export const DELETE: RequestHandler = async ({ request }) => {
   const { id } = await request.json();
-  await prisma.user.delete({ where: { id: Number(id) } });
-  return new Response(null, { status: 204 });
+  const response = await prisma.user.delete({ where: { id: Number(id) } });
+  return new Response(JSON.stringify(response), { status: 204 });
 };
